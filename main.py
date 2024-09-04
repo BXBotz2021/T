@@ -1,3 +1,8 @@
+To ensure that users who join the channel after receiving the alert message are able to use the bot without being prompted again, you can modify the code slightly. Specifically, you'll need to store the user ID temporarily once they have clicked the "I Subscribed ✅" button and successfully checked their subscription. Here's how to implement this:
+
+### Updated Code with Persistent User Check
+
+```python
 import os
 import logging
 from telegraph import upload_file
@@ -16,6 +21,9 @@ force_sub_channel_id = None
 
 # Variable for authorized users (bot owner IDs)
 AUTH_USERS = [6974737899]  # Replace with actual user IDs
+
+# Temporarily store users who have verified their subscription
+verified_users = set()
 
 Bot = Client(
     "Telegraph Uploader Bot",
@@ -89,13 +97,18 @@ ABOUT_BUTTONS = InlineKeyboardMarkup(
 async def force_sub(bot, message):
     global force_sub_channel_id
 
+    # Check if the user is already verified
+    if message.from_user.id in verified_users:
+        return True
+
     try:
         logger.info(f"Checking if user is a member of the channel with ID: {force_sub_channel_id}")
         user = await bot.get_chat_member(force_sub_channel_id, message.from_user.id)
 
-        # If the user is already a member, allow access
+        # If the user is already a member, allow access and add them to the verified_users set
         if user.status in ["member", "administrator", "creator"]:
             logger.info("User is a member of the channel.")
+            verified_users.add(message.from_user.id)  # Add to verified users
             return True
 
     except UserNotParticipant:
