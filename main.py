@@ -187,7 +187,7 @@ async def cb_data(bot, callback_query):
 
 
 
-@Bot.on_message(filters.private & filters.command(["start"]))
+@Bot.on_message(filters.private & filters.command("start"))
 async def start(bot, update):
     if not await force_sub(bot, update):
         return
