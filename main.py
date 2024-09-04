@@ -200,6 +200,7 @@ async def start(bot, update):
     )
 
 
+
 @Bot.on_message(filters.private & (filters.media | filters.command(["upload", "other_command"])))
 async def getmedia(bot, message: Message):
     if not await force_sub(bot, message):
