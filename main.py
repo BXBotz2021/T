@@ -2,7 +2,6 @@
 
 ### Updated Code with Persistent User Check
 
-```python
 import os
 import logging
 from telegraph import upload_file
