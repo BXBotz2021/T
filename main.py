@@ -1,4 +1,4 @@
-To ensure that users who join the channel after receiving the alert message are able to use the bot without being prompted again, you can modify the code slightly. Specifically, you'll need to store the user ID temporarily once they have clicked the "I Subscribed ✅" button and successfully checked their subscription. Here's how to implement this:
+#To ensure that users who join the channel after receiving the alert message are able to use the bot without being prompted again, you can modify the code slightly. Specifically, you'll need to store the user ID temporarily once they have clicked the "I Subscribed ✅" button and successfully checked their subscription. Here's how to implement this:
 
 ### Updated Code with Persistent User Check
 
