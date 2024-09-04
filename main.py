@@ -131,44 +131,36 @@ async def force_sub(bot, message):
 
 @Bot.on_message(filters.private & filters.command("set_fsub"))
 async def set_fsub(bot, message: Message):
-    global force_sub_channel_id, force_sub_channel_username  # Reference the global variables
+    global force_sub_channel  # Reference the global variable
     
+    # Check if the user is authorized (e.g., bot owner or admin)
     if message.from_user.id not in AUTH_USERS:
         await message.reply_text("❌ You are not authorized to use this command.")
         return
     
+    # Validate the command input
+    if len(message.text.split(" ", 1)) < 2:
+        await message.reply_text("❌ Please provide a valid channel username (e.g., /set_fsub @channelusername).")
+        return
+    
+    # Get the new channel from the command arguments
     new_channel = message.text.split(" ", 1)[1].strip()
     if not new_channel.startswith("@"):
         await message.reply_text("❌ Please provide a valid channel username starting with '@'.")
         return
     
+    # Resolve the channel ID from the username
     try:
-        chat = await bot.get_chat(new_channel)
-        force_sub_channel_id = chat.id
-        force_sub_channel_username = new_channel  # Store the username for reference
-        
-        await message.reply_text(f"✅ Force subscription channel set to: {new_channel}")
+        channel_info = await bot.get_chat(new_channel)
+        force_sub_channel = new_channel
+        await message.reply_text(f"✅ Force subscription channel updated to: {new_channel}")
     except Exception as e:
-        await message.reply_text(f"❌ Failed to set the force subscription channel: {str(e)}")
-
-
-@Bot.on_message(filters.private & filters.command("info"))
-async def user_info(bot, message: Message):
-    user = message.from_user
-    user_info_text = f"""
-**User Info:**
-- **User ID:** `{user.id}`
-- **First Name:** `{user.first_name}`
-- **Last Name:** `{user.last_name or 'N/A'}`
-- **Username:** `{user.username or 'N/A'}`
-- **Language Code:** `{user.language_code}`
-"""
-    
-    await message.reply_text(user_info_text)
+        await message.reply_text(f"❌ Error updating channel: {e}")
+        return
 
 
 @Bot.on_callback_query()
-async def cb_data(callback_query):
+async def cb_data(bot, callback_query):
     data = callback_query.data
     message = callback_query.message
 
@@ -191,16 +183,8 @@ async def cb_data(callback_query):
             reply_markup=ABOUT_BUTTONS
         )
     elif data == "check_subscription":
-        if await force_sub(callback_query.bot, callback_query.message):
-            await message.edit_text(
-                text="✅ Thank you for subscribing! You can now use the bot.",
-                disable_web_page_preview=True,
-                reply_markup=START_BUTTONS
-            )
-        else:
-            await callback_query.answer(AJAS_TEXT, show_alert=True)
-    else:
-        await message.delete()
+        # Recheck if the u
+
 
 
 @Bot.on_message(filters.private & filters.command(["start"]))
