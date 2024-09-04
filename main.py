@@ -10,9 +10,9 @@ from config import Config
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global variable for the Force Sub Channel ID and Username
-force_sub_channel_id = None  # To be set via /set_fsub command
-force_sub_channel_username = None  # Store the username for reference
+# Global variables for the Force Sub Channel
+force_sub_channel = None
+force_sub_channel_id = None
 
 # Variable for authorized users (bot owner IDs)
 AUTH_USERS = [6974737899]  # Replace with actual user IDs
@@ -54,6 +54,7 @@ Dont be oversmart infront of me🤬
 
 ❌ You still need to join our channel to use the bot. Please join the channel and click 'I Subscribed ✅' again."""
 
+
 START_BUTTONS = InlineKeyboardMarkup(
     [
         [InlineKeyboardButton('📢 UPDATES CHANNEL', url='https://telegram.me/moviez_botz')],
@@ -86,18 +87,17 @@ ABOUT_BUTTONS = InlineKeyboardMarkup(
 )
 
 async def force_sub(bot, message):
-    if not force_sub_channel_id:
-        logger.error("Force subscription channel is not set.")
-        await message.reply_text("❌ Force subscription channel is not set. Contact the bot owner.")
-        return False
+    global force_sub_channel_id
 
     try:
         logger.info(f"Checking if user is a member of the channel with ID: {force_sub_channel_id}")
         user = await bot.get_chat_member(force_sub_channel_id, message.from_user.id)
 
+        # If the user is already a member, allow access
         if user.status in ["member", "administrator", "creator"]:
             logger.info("User is a member of the channel.")
             return True
+
     except UserNotParticipant:
         logger.warning("User is not a participant in the channel.")
     except ChatAdminRequired:
@@ -109,6 +109,7 @@ async def force_sub(bot, message):
         await message.reply_text(f"An error occurred: {e}")
         return False
 
+    # If the user is not subscribed, send the force subscription message
     try:
         invite_link = await bot.export_chat_invite_link(force_sub_channel_id)
     except ChatAdminRequired:
@@ -116,6 +117,7 @@ async def force_sub(bot, message):
         await message.reply_text("❌ I need to be an admin in the channel to generate an invite link.")
         return False
 
+    # Send a message with a "Check Subscription" button
     await message.reply_text(
         text=f"❌ To use this bot, you must join [our channel]({invite_link}) first.",
         disable_web_page_preview=True,
@@ -131,7 +133,7 @@ async def force_sub(bot, message):
 
 @Bot.on_message(filters.private & filters.command("set_fsub"))
 async def set_fsub(bot, message: Message):
-    global force_sub_channel  # Reference the global variable
+    global force_sub_channel, force_sub_channel_id
     
     # Check if the user is authorized (e.g., bot owner or admin)
     if message.from_user.id not in AUTH_USERS:
@@ -153,10 +155,26 @@ async def set_fsub(bot, message: Message):
     try:
         channel_info = await bot.get_chat(new_channel)
         force_sub_channel = new_channel
+        force_sub_channel_id = channel_info.id
         await message.reply_text(f"✅ Force subscription channel updated to: {new_channel}")
     except Exception as e:
         await message.reply_text(f"❌ Error updating channel: {e}")
         return
+
+
+@Bot.on_message(filters.private & filters.command("info"))
+async def user_info(bot, message: Message):
+    user = message.from_user
+    user_info_text = f"""
+**User Info:**
+- **User ID:** `{user.id}`
+- **First Name:** `{user.first_name}`
+- **Last Name:** `{user.last_name or 'N/A'}`
+- **Username:** `{user.username or 'N/A'}`
+- **Language Code:** `{user.language_code}`
+"""
+    
+    await message.reply_text(user_info_text)
 
 
 @Bot.on_callback_query()
@@ -183,11 +201,29 @@ async def cb_data(bot, callback_query):
             reply_markup=ABOUT_BUTTONS
         )
     elif data == "check_subscription":
-        # Recheck if the u
+        # Recheck if the user is now subscribed
+        if await force_sub(bot, message):
+            await message.edit_text(
+                text="✅ Thank you for subscribing! You can now use the bot.",
+                disable_web_page_preview=True,
+                reply_markup=START_BUTTONS
+            )
+        else:
+            # Send an alternate message with a photo if the user hasn't joined the channel
+            await message.edit_text(
+                text=AJAS_TEXT,
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton('Join Channel', url=await bot.export_chat_invite_link(force_sub_channel))],
+                        [InlineKeyboardButton('✅ I Subscribed', callback_data='check_subscription')]
+                    ]
+                )
+            )
+    else:
+        await message.delete()
 
 
-
-@Bot.on_message(filters.private & filters.command("start"))
+@Bot.on_message(filters.private & filters.command(["start"]))
 async def start(bot, update):
     if not await force_sub(bot, update):
         return
@@ -198,7 +234,6 @@ async def start(bot, update):
         quote=True,
         reply_markup=START_BUTTONS
     )
-
 
 
 @Bot.on_message(filters.private & (filters.media | filters.command(["upload", "other_command"])))
@@ -221,8 +256,8 @@ async def getmedia(bot, message: Message):
         except:
             pass
     except Exception as error:
-        text=f"Error :- <code>{error}</code>"
-        reply_markup=InlineKeyboardMarkup(
+        text = f"Error :- <code>{error}</code>"
+        reply_markup = InlineKeyboardMarkup(
             [[InlineKeyboardButton('More Help', callback_data='help')]]
         )
         await processing_message.edit_text(
@@ -232,19 +267,19 @@ async def getmedia(bot, message: Message):
         )
         return
     
-    text=f"`https://telegra.ph{response[0]}`"
-    reply_markup=InlineKeyboardMarkup(
+    text = f"`https://telegra.ph{response[0]}`"
+    reply_markup = InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(text="OPEN LINK ↗️", url=f"https://telegra.ph{response[0]}"),
-                InlineKeyboardButton(text="SHARE LINK ↩️", url=f"https://telegram.me/share/url?url=https://telegra.ph{response[0]}")
+                InlineKeyboardButton(text="SHARE LINK ⬆️", url=f"https://telegram.me/share/url?url=https://telegra.ph{response[0]}")
             ],
             [
-                InlineKeyboardButton(text="🔰 JOIN UPDATES CHANNEL 🔰", url=f"https://t.me/{force_sub_channel_username}")
+                InlineKeyboardButton('⚠️ ABOUT', callback_data='about'),
+                InlineKeyboardButton('CLOSE ⛔', callback_data='close')
             ]
         ]
     )
-    
     await processing_message.edit_text(
         text=text,
         disable_web_page_preview=True,
@@ -252,4 +287,11 @@ async def getmedia(bot, message: Message):
     )
 
 
-Bot.run()
+@Bot.on_message(filters.command("restart") & filters.user(AUTH_USERS))
+async def restart(bot, message):
+    await message.reply_text("Restarting...")
+    os.execv(sys.executable, ['python'] + sys.argv)
+
+
+if __name__ == "__main__":
+    Bot.run()
